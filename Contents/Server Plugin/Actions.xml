@@ -1,0 +1,51 @@
+<?xml version="1.0"?>
+<Actions>
+    <Action id="sendPushNotification">
+        <Name>Send Push Notification</Name>
+        <CallbackMethod>sendPushNotification</CallbackMethod>
+        <ConfigUI>
+            <Field type="textfield" id="title" defaultValue="Domio">
+                <Label>Title:</Label>
+            </Field>
+            <Field type="label" id="titleHelp" alignWithControl="true"
+                   fontSize="small" fontColor="darkgray">
+                <Label>Optional. Use %%v:varName%% for variables, %%d:deviceId:stateName%% for device states.</Label>
+            </Field>
+
+            <Field type="textfield" id="body">
+                <Label>Body:</Label>
+            </Field>
+            <Field type="label" id="bodyHelp" alignWithControl="true"
+                   fontSize="small" fontColor="darkgray">
+                <Label>Required. Supports same substitution as title.</Label>
+            </Field>
+
+            <Field type="separator" id="sep1"/>
+
+            <Field type="menu" id="deepLinkType" defaultValue="none">
+                <Label>Deep Link:</Label>
+                <List>
+                    <Option value="none">None</Option>
+                    <Option value="device">Device</Option>
+                    <Option value="page">Control Page</Option>
+                    <Option value="action">Action Group</Option>
+                    <Option value="log">Event Log</Option>
+                </List>
+            </Field>
+            <Field type="textfield" id="deepLinkId" defaultValue="">
+                <Label>Deep Link ID:</Label>
+            </Field>
+            <Field type="label" id="deepLinkHelp" alignWithControl="true"
+                   fontSize="small" fontColor="darkgray">
+                <Label>Numeric ID for Device, Control Page, or Action Group. Leave blank for None or Event Log.</Label>
+            </Field>
+
+            <Field type="separator" id="sep2"/>
+
+            <Field type="checkbox" id="playSound" defaultValue="true">
+                <Label>Play sound:</Label>
+                <Description>Play notification sound on device</Description>
+            </Field>
+        </ConfigUI>
+    </Action>
+</Actions>

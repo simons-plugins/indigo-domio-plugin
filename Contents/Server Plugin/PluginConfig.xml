@@ -1,0 +1,24 @@
+<?xml version="1.0"?>
+<PluginConfig>
+    <Field id="relayUrl" type="textfield"
+           defaultValue="https://push.domio-smart-home.app">
+        <Label>Relay URL:</Label>
+    </Field>
+    <Field id="relayUrlHelp" type="label" fontSize="small"
+           fontColor="darkgray" alignWithControl="true">
+        <Label>The push notification relay URL. Change only if using a custom relay.</Label>
+    </Field>
+
+    <Field id="sep1" type="separator"/>
+
+    <Field id="registrationStatus" type="label">
+        <Label>Registration Status:</Label>
+    </Field>
+
+    <Field id="sep2" type="separator"/>
+
+    <Field id="showDebugInfo" type="checkbox" defaultValue="false">
+        <Label>Enable debug logging:</Label>
+        <Description>Show detailed API calls in Event Log</Description>
+    </Field>
+</PluginConfig>
