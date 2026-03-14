@@ -75,6 +75,7 @@ class Plugin(indigo.PluginBase):
         req = urllib.request.Request(url, data=data, method="POST")
         req.add_header("Content-Type", "application/json")
         req.add_header("Authorization", f"Bearer {bearer_token}")
+        req.add_header("User-Agent", "DomioPush/2.0")
 
         self.logger.debug(f"POST {url}")
 
@@ -216,12 +217,12 @@ class Plugin(indigo.PluginBase):
                 continue
 
             response = self._post_json(
-                f"{RELAY_URL}/v1/push", payload, app_token
+                f"{RELAY_URL}/v2/push", payload, app_token
             )
             http_error = response.get("_http_error")
 
             if response.get("success"):
-                self.logger.debug(f"Push sent to {device_name}")
+                self.logger.info(f"Push sent to {device_name}")
                 any_success = True
             elif http_error == 403:
                 self._subscription_expired = True
