@@ -4,10 +4,6 @@
         <Name>Send Test Notification</Name>
         <CallbackMethod>sendTestNotification</CallbackMethod>
     </MenuItem>
-    <MenuItem id="registerWithRelay">
-        <Name>Register with Relay</Name>
-        <CallbackMethod>registerWithRelay</CallbackMethod>
-    </MenuItem>
     <MenuItem id="showStatus">
         <Name>Show Status</Name>
         <CallbackMethod>showStatus</CallbackMethod>
