@@ -207,6 +207,15 @@ class Plugin(indigo.PluginBase):
         group_list.sort(key=lambda x: x[1].lower())
         return group_list
 
+    def appDeviceListGenerator(self, filter="", valuesDict=None, typeId="", targetId=0):
+        """Return list of registered Domio app devices for targeting notifications."""
+        device_list = [("all", "All Devices")]
+        tokens = self._get_app_tokens()
+        for entry in tokens:
+            name = entry.get("name", "unknown")
+            device_list.append((name, name))
+        return device_list
+
     # ═══════════════════════════════════════════════════
     # Deep Link (Push)
     # ═══════════════════════════════════════════════════
@@ -234,7 +243,7 @@ class Plugin(indigo.PluginBase):
     # ═══════════════════════════════════════════════════
 
     def _send_push(self, title: str, body: str, deep_link: str | None = None,
-                   play_sound: bool = True) -> bool:
+                   play_sound: bool = True, target_device: str = "all") -> bool:
         if self._subscription_expired:
             now = datetime.now()
             if not self._expired_logged_at or (now - self._expired_logged_at).total_seconds() > 3600:
@@ -246,6 +255,12 @@ class Plugin(indigo.PluginBase):
         if not tokens:
             self.logger.error("No registered devices -- install Domio app and subscribe")
             return False
+
+        if target_device != "all":
+            tokens = [t for t in tokens if t.get("name") == target_device]
+            if not tokens:
+                self.logger.error(f"No registered device named '{target_device}'")
+                return False
 
         payload: dict = {"title": title, "body": body}
         if play_sound:
@@ -300,6 +315,7 @@ class Plugin(indigo.PluginBase):
         title = action.props.get("title", "Domio")
         body = action.props.get("body", "")
         play_sound = action.props.get("playSound", "true") == "true"
+        target_device = action.props.get("targetDevice", "all")
 
         if not body:
             self.logger.error("Notification body is required")
@@ -309,13 +325,13 @@ class Plugin(indigo.PluginBase):
         body = self.substitute_tokens(body)
         deep_link = self._build_deep_link(action.props)
 
-        self._send_push(title, body, deep_link, play_sound)
+        self._send_push(title, body, deep_link, play_sound, target_device)
 
     # ═══════════════════════════════════════════════════
     # Widget Refresh (Push)
     # ═══════════════════════════════════════════════════
 
-    def _send_widget_refresh(self) -> bool:
+    def _send_widget_refresh(self, target_device: str = "all") -> bool:
         if self._subscription_expired:
             now = datetime.now()
             if not self._expired_logged_at or (now - self._expired_logged_at).total_seconds() > 3600:
@@ -327,6 +343,12 @@ class Plugin(indigo.PluginBase):
         if not tokens:
             self.logger.error("No registered devices -- install Domio app and subscribe")
             return False
+
+        if target_device != "all":
+            tokens = [t for t in tokens if t.get("name") == target_device]
+            if not tokens:
+                self.logger.error(f"No registered device named '{target_device}'")
+                return False
 
         any_success = False
         for entry in tokens:
@@ -363,7 +385,8 @@ class Plugin(indigo.PluginBase):
         return any_success
 
     def refreshWidgets(self, action):
-        self._send_widget_refresh()
+        target_device = action.props.get("targetDevice", "all")
+        self._send_widget_refresh(target_device)
 
     # ═══════════════════════════════════════════════════
     # Database Connection (History)

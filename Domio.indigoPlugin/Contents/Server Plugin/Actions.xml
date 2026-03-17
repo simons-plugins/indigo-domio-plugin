@@ -20,6 +20,11 @@
                 <Label>Required. Supports same substitution as title.</Label>
             </Field>
 
+            <Field type="menu" id="targetDevice" defaultValue="all">
+                <Label>Send to:</Label>
+                <List class="self" method="appDeviceListGenerator" dynamicReload="true" />
+            </Field>
+
             <Field type="separator" id="sep1"/>
 
             <Field type="menu" id="deepLinkType" defaultValue="none">
@@ -69,9 +74,13 @@
         <Name>Refresh Domio Widgets</Name>
         <CallbackMethod>refreshWidgets</CallbackMethod>
         <ConfigUI>
+            <Field type="menu" id="targetDevice" defaultValue="all">
+                <Label>Send to:</Label>
+                <List class="self" method="appDeviceListGenerator" dynamicReload="true" />
+            </Field>
             <Field type="label" id="widgetHelp"
                    fontSize="small" fontColor="darkgray">
-                <Label>Sends a silent push to all registered devices, triggering an immediate widget refresh. Use this in triggers after device state changes that should be reflected on home screen widgets.</Label>
+                <Label>Sends a silent push triggering an immediate widget refresh. Use this in triggers after device state changes that should be reflected on home screen widgets.</Label>
             </Field>
         </ConfigUI>
     </Action>
