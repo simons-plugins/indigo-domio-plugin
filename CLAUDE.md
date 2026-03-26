@@ -18,7 +18,7 @@ Indigo Plugin (this) → Cloudflare Relay → APNs → Domio iOS App
 
 ## How It Works
 
-1. Domio iOS app subscribes (StoreKit 2) and registers with the relay
+1. Domio iOS app registers with the relay
 2. Relay issues an HMAC app token, iOS app writes it to `domio_app_token` Indigo variable
 3. This plugin reads tokens from that variable and POSTs to the relay
 4. Relay forwards to APNs → notification arrives on device
@@ -57,21 +57,20 @@ domio push.IndigoPlugin/
 - Auto-creates variable if missing
 - Watches for variable changes (`variableUpdated`)
 - Auto-removes expired tokens on 410 response from relay
-- Handles 403 (subscription expired) with hourly log suppression
 
 ## Error Handling
 
 | HTTP Code | Meaning | Action |
 |-----------|---------|--------|
 | 200 | Success | Log and continue |
-| 403 | Subscription expired | Set flag, log hourly, skip sends |
+| 403 | Unauthorised | Log warning, skip sends |
 | 410 | Token invalid/expired | Remove from variable |
 | 429 | Rate limited | Stop fan-out, log warning |
 
 ## Menu Items
 
 - **Send Test Notification** — fixed test push to all devices
-- **Show Status** — registration count, subscription state, last push result
+- **Show Status** — registration count and last push result
 - **Toggle Debug Logging** — verbose HTTP request/response logging
 
 ## Development
@@ -96,5 +95,5 @@ Then enable via **Plugins → Manage Plugins** in Indigo.
 ### Requirements
 
 - Indigo 2023+ (Python 3.10+)
-- Domio iOS app with active push subscription
+- Domio iOS app with push notifications enabled
 - Internet connection
