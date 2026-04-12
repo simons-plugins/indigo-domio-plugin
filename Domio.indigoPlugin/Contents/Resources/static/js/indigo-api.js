@@ -18,7 +18,7 @@ class IndigoAPI {
      * @param {string} config.apiKey - Bearer token for authentication.
      */
     constructor(config) {
-        const cfg = config || window.INDIGO_CONFIG;
+        const cfg = config || window.INDIGO_CONFIG || IndigoAPI._configFromURL();
         if (!cfg || !cfg.baseURL || !cfg.apiKey) {
             this._configured = false;
             this._showConfigError();
@@ -35,8 +35,21 @@ class IndigoAPI {
 
     /** Check whether INDIGO_CONFIG is available. */
     static isConfigured() {
-        const cfg = window.INDIGO_CONFIG;
+        const cfg = window.INDIGO_CONFIG || IndigoAPI._configFromURL();
         return !!(cfg && cfg.baseURL && cfg.apiKey);
+    }
+
+    /**
+     * Derive config from the page's own URL for browser testing.
+     * When loaded via IWS with `?api-key=KEY`, the origin is the Indigo
+     * server and the key is in the query string.
+     */
+    static _configFromURL() {
+        if (typeof location === "undefined") return null;
+        const params = new URLSearchParams(location.search);
+        const apiKey = params.get("api-key");
+        if (!apiKey) return null;
+        return { baseURL: location.origin, apiKey };
     }
 
     // ── Devices ──────────────────────────────────────
@@ -90,7 +103,10 @@ class IndigoAPI {
 
     /** Execute an action group by ID. */
     async executeActionGroup(id) {
-        return this._put(`/v2/api/indigo.actionGroups/${id}`, { execute: true });
+        return this._post("/v2/api/command", {
+            message: "indigo.actionGroup.execute",
+            objectId: id,
+        });
     }
 
     // ── Variables ────────────────────────────────────
@@ -184,6 +200,14 @@ class IndigoAPI {
         return data;
     }
 
+    async _post(path, body) {
+        return this._fetch(path, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(body),
+        });
+    }
+
     async _put(path, body) {
         return this._fetch(path, {
             method: "PUT",
@@ -193,9 +217,9 @@ class IndigoAPI {
     }
 
     async _command(deviceId, message, parameters) {
-        const body = { message };
+        const body = { message, objectId: deviceId };
         if (parameters) body.parameters = parameters;
-        return this._put(`/v2/api/indigo.devices/${deviceId}`, body);
+        return this._post("/v2/api/command", body);
     }
 
     async _fetch(path, options = {}) {
