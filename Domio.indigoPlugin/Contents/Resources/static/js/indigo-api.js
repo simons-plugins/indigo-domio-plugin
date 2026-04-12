@@ -193,11 +193,7 @@ class IndigoAPI {
     }
 
     async _getList(path) {
-        // Indigo REST API wraps lists in an outer object; extract the array.
-        const data = await this._fetch(path, { method: "GET" });
-        if (Array.isArray(data)) return data;
-        // The API returns an array directly for list endpoints.
-        return data;
+        return this._fetch(path, { method: "GET" });
     }
 
     async _post(path, body) {
@@ -297,7 +293,7 @@ class IndigoAPI {
             "position:fixed;top:0;left:0;right:0;padding:12px 16px;" +
             "background:#dc3545;color:#fff;font:14px/1.4 -apple-system,sans-serif;" +
             "text-align:center;z-index:99999;";
-        banner.textContent = "Indigo connection not configured. Open this page in the Domio app.";
+        banner.textContent = "Indigo connection not configured. Set window.INDIGO_CONFIG or add ?api-key= to the URL.";
         if (document.readyState === "loading") {
             document.addEventListener("DOMContentLoaded", () => document.body.prepend(banner));
         } else {
