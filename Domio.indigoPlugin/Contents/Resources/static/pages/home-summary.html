@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
+    <meta name="indigo-page-name" content="Home Summary">
+    <meta name="indigo-page-icon" content="house.fill">
+    <meta name="indigo-page-description" content="Device counts and active device controls">
+    <title>Home Summary</title>
+    <style>
+        :root {
+            --bg: #f5f5f7;
+            --card-bg: #ffffff;
+            --text: #1d1d1f;
+            --text-secondary: #86868b;
+            --border: #d2d2d7;
+            --accent: #5856d6;
+            --accent-light: #ededfc;
+            --on-color: #34c759;
+            --off-color: #d2d2d7;
+            --shadow: 0 1px 3px rgba(0,0,0,0.08);
+        }
+
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --bg: #000000;
+                --card-bg: #1c1c1e;
+                --text: #f5f5f7;
+                --text-secondary: #98989d;
+                --border: #38383a;
+                --accent: #7d7aff;
+                --accent-light: #2c2c3a;
+                --on-color: #30d158;
+                --off-color: #48484a;
+                --shadow: 0 1px 3px rgba(0,0,0,0.3);
+            }
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            padding: 16px;
+            padding-bottom: 32px;
+            -webkit-text-size-adjust: 100%;
+        }
+
+        h1 {
+            font-size: 28px;
+            font-weight: 700;
+            margin-bottom: 4px;
+        }
+
+        .subtitle {
+            font-size: 15px;
+            color: var(--text-secondary);
+            margin-bottom: 20px;
+        }
+
+        .loading, .error-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--text-secondary);
+        }
+
+        .error-state { color: #ff3b30; }
+
+        .spinner {
+            width: 24px; height: 24px;
+            border: 3px solid var(--border);
+            border-top-color: var(--accent);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin: 0 auto 12px;
+        }
+
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* ── Summary Cards ── */
+
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+            gap: 12px;
+            margin-bottom: 24px;
+        }
+
+        .summary-card {
+            background: var(--card-bg);
+            border-radius: 14px;
+            padding: 16px;
+            box-shadow: var(--shadow);
+        }
+
+        .summary-card .count {
+            font-size: 32px;
+            font-weight: 700;
+            color: var(--accent);
+        }
+
+        .summary-card .label {
+            font-size: 13px;
+            color: var(--text-secondary);
+            margin-top: 2px;
+        }
+
+        .summary-card .active-count {
+            font-size: 12px;
+            color: var(--on-color);
+            margin-top: 4px;
+        }
+
+        /* ── Section Header ── */
+
+        .section-header {
+            font-size: 20px;
+            font-weight: 600;
+            margin-bottom: 12px;
+        }
+
+        .section-empty {
+            font-size: 14px;
+            color: var(--text-secondary);
+            padding: 20px;
+            text-align: center;
+        }
+
+        /* ── Device List ── */
+
+        .device-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin-bottom: 24px;
+        }
+
+        .device-row {
+            background: var(--card-bg);
+            border-radius: 12px;
+            padding: 14px 16px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            box-shadow: var(--shadow);
+        }
+
+        .device-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .device-name {
+            font-size: 16px;
+            font-weight: 500;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .device-state {
+            font-size: 13px;
+            color: var(--text-secondary);
+            margin-top: 2px;
+        }
+
+        /* ── Toggle Switch ── */
+
+        .toggle {
+            position: relative;
+            width: 51px;
+            height: 31px;
+            flex-shrink: 0;
+            margin-left: 12px;
+            cursor: pointer;
+        }
+
+        .toggle input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .toggle .slider {
+            position: absolute;
+            inset: 0;
+            background: var(--off-color);
+            border-radius: 31px;
+            transition: background 0.25s;
+        }
+
+        .toggle .slider::before {
+            content: "";
+            position: absolute;
+            width: 27px;
+            height: 27px;
+            left: 2px;
+            bottom: 2px;
+            background: white;
+            border-radius: 50%;
+            transition: transform 0.25s;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+        }
+
+        .toggle input:checked + .slider {
+            background: var(--on-color);
+        }
+
+        .toggle input:checked + .slider::before {
+            transform: translateX(20px);
+        }
+
+        .toggle input:disabled + .slider {
+            opacity: 0.5;
+        }
+
+        /* ── Brightness Slider ── */
+
+        .brightness-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-left: 12px;
+            flex-shrink: 0;
+        }
+
+        .brightness-slider {
+            width: 80px;
+            accent-color: var(--accent);
+        }
+
+        .brightness-value {
+            font-size: 13px;
+            color: var(--text-secondary);
+            min-width: 32px;
+            text-align: right;
+        }
+
+        /* ── Last Updated ── */
+
+        .last-updated {
+            text-align: center;
+            font-size: 12px;
+            color: var(--text-secondary);
+            padding-top: 12px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Home Summary</h1>
+    <p class="subtitle" id="subtitle">Loading...</p>
+
+    <div id="content">
+        <div class="loading">
+            <div class="spinner"></div>
+            <p>Connecting to Indigo...</p>
+        </div>
+    </div>
+
+    <p class="last-updated" id="lastUpdated"></p>
+
+    <script src="../js/indigo-api.js"></script>
+    <script>
+        const indigo = new IndigoAPI();
+        let debounceTimers = {};
+
+        if (!IndigoAPI.isConfigured()) {
+            // Error banner is shown by indigo-api.js itself.
+        } else {
+            // Start observing all devices with 5-second polling.
+            indigo.observeAll(renderDashboard, 5000);
+        }
+
+        function renderDashboard(devices) {
+            const content = document.getElementById("content");
+            const subtitle = document.getElementById("subtitle");
+            const lastUpdated = document.getElementById("lastUpdated");
+
+            // Categorise devices.
+            const categories = {};
+            const active = [];
+
+            for (const dev of devices) {
+                const cls = classifyDevice(dev);
+                if (!categories[cls.category]) {
+                    categories[cls.category] = { total: 0, active: 0 };
+                }
+                categories[cls.category].total++;
+
+                if (cls.isActive) {
+                    categories[cls.category].active++;
+                    active.push(dev);
+                }
+            }
+
+            subtitle.textContent = `${devices.length} devices`;
+
+            // Build summary cards.
+            let html = '<div class="summary-grid">';
+            const order = ["Lights", "Switches", "Thermostats", "Sensors", "Other"];
+            for (const cat of order) {
+                if (!categories[cat]) continue;
+                const c = categories[cat];
+                html += `
+                    <div class="summary-card">
+                        <div class="count">${c.total}</div>
+                        <div class="label">${cat}</div>
+                        ${c.active > 0 ? `<div class="active-count">${c.active} on</div>` : ""}
+                    </div>`;
+            }
+            html += "</div>";
+
+            // Build active device list.
+            html += '<h2 class="section-header">Active Devices</h2>';
+            if (active.length === 0) {
+                html += '<p class="section-empty">All devices are off</p>';
+            } else {
+                html += '<div class="device-list">';
+                for (const dev of active) {
+                    html += renderDeviceRow(dev);
+                }
+                html += "</div>";
+            }
+
+            content.innerHTML = html;
+
+            // Attach event listeners after DOM update.
+            attachToggleListeners();
+            attachBrightnessListeners();
+
+            const now = new Date();
+            lastUpdated.textContent = `Updated ${now.toLocaleTimeString()}`;
+        }
+
+        function classifyDevice(dev) {
+            const cls = (dev.class || "").toLowerCase();
+            const type = (dev.type || "").toLowerCase();
+            let category = "Other";
+            let isActive = false;
+
+            if (cls.includes("dimmer") || type.includes("dimmer")) {
+                category = "Lights";
+                isActive = dev.onState === true || dev.brightness > 0;
+            } else if (cls.includes("relay") || type.includes("relay")) {
+                if ((dev.name || "").toLowerCase().match(/light|lamp|bulb/)) {
+                    category = "Lights";
+                } else {
+                    category = "Switches";
+                }
+                isActive = dev.onState === true;
+            } else if (cls.includes("thermostat")) {
+                category = "Thermostats";
+                isActive = (dev.hvacMode || "").toLowerCase() !== "off";
+            } else if (cls.includes("sensor")) {
+                category = "Sensors";
+                isActive = dev.onState === true;
+            } else {
+                // Check for onState as a generic activity indicator.
+                isActive = dev.onState === true;
+            }
+
+            return { category, isActive };
+        }
+
+        function renderDeviceRow(dev) {
+            const cls = (dev.class || "").toLowerCase();
+            const isDimmer = cls.includes("dimmer");
+            const state = isDimmer
+                ? `${dev.brightness || 0}%`
+                : (dev.onState ? "On" : "Off");
+
+            let control = "";
+            if (isDimmer) {
+                control = `
+                    <div class="brightness-row">
+                        <input type="range" class="brightness-slider"
+                               data-device-id="${dev.id}"
+                               min="0" max="100" value="${dev.brightness || 0}">
+                        <span class="brightness-value">${dev.brightness || 0}%</span>
+                    </div>
+                    <label class="toggle">
+                        <input type="checkbox" data-device-id="${dev.id}"
+                               ${dev.onState ? "checked" : ""}>
+                        <span class="slider"></span>
+                    </label>`;
+            } else {
+                control = `
+                    <label class="toggle">
+                        <input type="checkbox" data-device-id="${dev.id}"
+                               ${dev.onState ? "checked" : ""}>
+                        <span class="slider"></span>
+                    </label>`;
+            }
+
+            return `
+                <div class="device-row">
+                    <div class="device-info">
+                        <div class="device-name">${escapeHtml(dev.name || "Unknown")}</div>
+                        <div class="device-state">${state}</div>
+                    </div>
+                    ${control}
+                </div>`;
+        }
+
+        function attachToggleListeners() {
+            for (const checkbox of document.querySelectorAll(".toggle input[type=checkbox]")) {
+                checkbox.addEventListener("change", async (e) => {
+                    const id = parseInt(e.target.dataset.deviceId);
+                    e.target.disabled = true;
+                    try {
+                        await indigo.toggle(id);
+                    } catch (err) {
+                        e.target.checked = !e.target.checked;
+                    }
+                    setTimeout(() => { e.target.disabled = false; }, 500);
+                });
+            }
+        }
+
+        function attachBrightnessListeners() {
+            for (const slider of document.querySelectorAll(".brightness-slider")) {
+                const id = slider.dataset.deviceId;
+                const valueSpan = slider.nextElementSibling;
+
+                slider.addEventListener("input", (e) => {
+                    valueSpan.textContent = `${e.target.value}%`;
+                });
+
+                slider.addEventListener("change", (e) => {
+                    clearTimeout(debounceTimers[id]);
+                    debounceTimers[id] = setTimeout(async () => {
+                        try {
+                            await indigo.setBrightness(parseInt(id), parseInt(e.target.value));
+                        } catch (err) {
+                            // Will refresh on next poll.
+                        }
+                    }, 300);
+                });
+            }
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement("div");
+            div.textContent = text;
+            return div.innerHTML;
+        }
+    </script>
+</body>
+</html>

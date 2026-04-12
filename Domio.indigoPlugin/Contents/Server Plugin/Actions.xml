@@ -62,6 +62,10 @@
         </ConfigUI>
     </Action>
     <!-- IWS HTTP endpoints (hidden from UI) -->
+    <Action id="pages" uiPath="hidden">
+        <Name>HTML Pages Manifest</Name>
+        <CallbackMethod>handle_pages</CallbackMethod>
+    </Action>
     <Action id="status" uiPath="hidden">
         <Name>History API Status</Name>
         <CallbackMethod>handle_status</CallbackMethod>

@@ -49,6 +49,12 @@ class Plugin(indigo.PluginBase):
         # History: connect to SQL Logger database
         self._connect_db()
 
+        # HTML Pages: report available pages
+        pages_dir = os.path.join(self.pluginFolderPath, "Contents", "Resources", "static", "pages")
+        if os.path.isdir(pages_dir):
+            page_count = len([f for f in os.listdir(pages_dir) if f.lower().endswith(".html")])
+            self.logger.info(f"HTML Pages: {page_count} page(s) available")
+
         self.logger.info("Domio plugin started")
 
     def shutdown(self):
@@ -452,6 +458,66 @@ class Plugin(indigo.PluginBase):
                 return candidate
 
         return None
+
+    # ═══════════════════════════════════════════════════
+    # IWS HTTP Endpoints (HTML Pages)
+    # ═══════════════════════════════════════════════════
+
+    def handle_pages(self, action, dev=None, caller_waiting_for_result=None):
+        """GET /message/com.simons-plugins.domio/pages/ — return HTML page manifest."""
+        reply = indigo.Dict()
+        reply["headers"] = indigo.Dict({"Content-Type": "application/json"})
+
+        pages_dir = os.path.join(self.pluginFolderPath, "Contents", "Resources", "static", "pages")
+        pages = []
+
+        if not os.path.isdir(pages_dir):
+            self.logger.debug("Pages directory does not exist — returning empty manifest")
+            reply["status"] = 200
+            reply["content"] = json.dumps({"pages": []})
+            return reply
+
+        real_pages_dir = os.path.realpath(pages_dir)
+
+        for filename in sorted(os.listdir(pages_dir)):
+            if not filename.lower().endswith(".html"):
+                continue
+
+            filepath = os.path.join(pages_dir, filename)
+
+            # Path traversal guard
+            if not os.path.realpath(filepath).startswith(real_pages_dir):
+                continue
+
+            try:
+                meta = self._parse_page_meta(filepath)
+                page_id = os.path.splitext(filename)[0]
+                pages.append({
+                    "id": page_id,
+                    "name": meta.get("name", page_id.replace("-", " ").title()),
+                    "icon": meta.get("icon", "doc.richtext"),
+                    "description": meta.get("description", ""),
+                    "path": filename,
+                })
+            except (OSError, UnicodeDecodeError) as exc:
+                self.logger.warning(f"Skipping page file {filename}: {exc}")
+
+        self.logger.debug(f"Pages manifest: {len(pages)} page(s)")
+        reply["status"] = 200
+        reply["content"] = json.dumps({"pages": pages})
+        return reply
+
+    def _parse_page_meta(self, filepath):
+        """Parse indigo-page-* meta tags from the first 4KB of an HTML file."""
+        meta = {}
+        with open(filepath, "r", encoding="utf-8") as f:
+            head_content = f.read(4096)
+        for match in re.finditer(
+            r'<meta\s+name="indigo-page-(\w+)"\s+content="([^"]*)"',
+            head_content, re.IGNORECASE,
+        ):
+            meta[match.group(1)] = match.group(2)
+        return meta
 
     # ═══════════════════════════════════════════════════
     # IWS HTTP Endpoints (History)
