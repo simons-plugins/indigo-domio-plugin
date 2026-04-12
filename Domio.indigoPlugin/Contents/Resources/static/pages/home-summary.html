@@ -260,15 +260,65 @@
 
     <p class="last-updated" id="lastUpdated"></p>
 
-    <script src="../js/indigo-api.js"></script>
     <script>
-        const indigo = new IndigoAPI();
+    // ── indigo-api.js V1 (inlined — WKWebView does not authenticate sub-resource requests) ──
+    class IndigoAPI {
+        constructor(config) {
+            const cfg = config || window.INDIGO_CONFIG || IndigoAPI._configFromURL();
+            if (!cfg || !cfg.baseURL || !cfg.apiKey) { this._configured = false; this._showConfigError(); return; }
+            this._configured = true;
+            this._baseURL = cfg.baseURL.replace(/\/+$/, "");
+            this._apiKey = cfg.apiKey;
+            this._errorHandler = null;
+            this._authFailureHandler = null;
+        }
+        static isConfigured() { const cfg = window.INDIGO_CONFIG || IndigoAPI._configFromURL(); return !!(cfg && cfg.baseURL && cfg.apiKey); }
+        static _configFromURL() { if (typeof location === "undefined") return null; const p = new URLSearchParams(location.search); const k = p.get("api-key"); return k ? { baseURL: location.origin, apiKey: k } : null; }
+        async getDevices() { return this._fetch("/v2/api/indigo.devices"); }
+        async getDevice(id) { return this._fetch(`/v2/api/indigo.devices/${id}`); }
+        async turnOn(id) { return this._command(id, "indigo.device.turnOn"); }
+        async turnOff(id) { return this._command(id, "indigo.device.turnOff"); }
+        async toggle(id) { return this._command(id, "indigo.device.toggle"); }
+        async setBrightness(id, value) { return this._command(id, "indigo.dimmer.setBrightness", { value }); }
+        async setHeatSetpoint(id, value) { return this._command(id, "indigo.thermostat.setHeatSetpoint", { value }); }
+        async setCoolSetpoint(id, value) { return this._command(id, "indigo.thermostat.setCoolSetpoint", { value }); }
+        async getActionGroups() { return this._fetch("/v2/api/indigo.actionGroups"); }
+        async executeActionGroup(id) { return this._post("/v2/api/command", { message: "indigo.actionGroup.execute", objectId: id }); }
+        async getVariables() { return this._fetch("/v2/api/indigo.variables"); }
+        async getVariable(id) { return this._fetch(`/v2/api/indigo.variables/${id}`); }
+        observe(deviceId, callback, intervalMs = 5000) { let last = null; const poll = async () => { try { const d = await this.getDevice(deviceId); const j = JSON.stringify(d); if (j !== last) { last = j; callback(d); } } catch (e) { this._handleError(e); } }; poll(); const t = setInterval(poll, intervalMs); return { stop: () => clearInterval(t) }; }
+        observeAll(callback, intervalMs = 5000) { let last = null; const poll = async () => { try { const d = await this.getDevices(); const j = JSON.stringify(d); if (j !== last) { last = j; callback(d); } } catch (e) { this._handleError(e); } }; poll(); const t = setInterval(poll, intervalMs); return { stop: () => clearInterval(t) }; }
+        onError(cb) { this._errorHandler = cb; }
+        onAuthFailure(cb) { this._authFailureHandler = cb; }
+        async _post(path, body) { return this._fetch(path, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }); }
+        async _command(deviceId, message, parameters) { const body = { message, objectId: deviceId }; if (parameters) body.parameters = parameters; return this._post("/v2/api/command", body); }
+        async _fetch(path, options = {}) {
+            this._requireConfigured();
+            const url = `${this._baseURL}${path}`;
+            const headers = { Authorization: `Bearer ${this._apiKey}`, Accept: "application/json", ...options.headers };
+            let response;
+            try { response = await fetch(url, { ...options, headers }); } catch (err) { const e = new IndigoAPIError("Network error: " + err.message, 0, err); this._handleError(e); throw e; }
+            if (response.status === 401 || response.status === 403) { const e = new IndigoAPIError("Authentication failed", response.status); if (this._authFailureHandler) this._authFailureHandler(e); this._handleError(e); throw e; }
+            if (!response.ok) { const t = await response.text().catch(() => ""); const e = new IndigoAPIError(`HTTP ${response.status}: ${t || response.statusText}`, response.status); this._handleError(e); throw e; }
+            const ct = response.headers.get("Content-Type") || ""; if (!ct.includes("json")) return null;
+            try { return await response.json(); } catch (err) { const e = new IndigoAPIError("Invalid JSON response", response.status, err); this._handleError(e); throw e; }
+        }
+        _requireConfigured() { if (!this._configured) throw new IndigoAPIError("IndigoAPI not configured", 0); }
+        _handleError(error) { if (this._errorHandler) { try { this._errorHandler(error); } catch (_) {} } }
+        _showConfigError() { if (typeof document === "undefined") return; const b = document.createElement("div"); b.style.cssText = "position:fixed;top:0;left:0;right:0;padding:12px 16px;background:#dc3545;color:#fff;font:14px/1.4 -apple-system,sans-serif;text-align:center;z-index:99999;"; b.textContent = "Indigo connection not configured. Set window.INDIGO_CONFIG or add ?api-key= to the URL."; document.readyState === "loading" ? document.addEventListener("DOMContentLoaded", () => document.body.prepend(b)) : document.body.prepend(b); }
+    }
+    class IndigoAPIError extends Error { constructor(message, status, cause) { super(message); this.name = "IndigoAPIError"; this.status = status; if (cause) this.cause = cause; } }
+    </script>
+    <script>
+        let indigo;
         let debounceTimers = {};
 
-        if (!IndigoAPI.isConfigured()) {
-            // Error banner is shown by indigo-api.js itself.
+        if (typeof IndigoAPI === "undefined") {
+            document.getElementById("content").innerHTML = '<p style="text-align:center;color:#ff3b30;padding:40px;">Failed to load Indigo API library.</p>';
+        } else if (!IndigoAPI.isConfigured()) {
+            // Error banner is shown by IndigoAPI constructor.
         } else {
-            // Start observing all devices with 5-second polling.
+            indigo = new IndigoAPI();
             indigo.observeAll(renderDashboard, 5000);
         }
 
