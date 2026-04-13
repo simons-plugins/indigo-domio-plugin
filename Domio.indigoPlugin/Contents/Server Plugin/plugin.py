@@ -49,11 +49,16 @@ class Plugin(indigo.PluginBase):
         # History: connect to SQL Logger database
         self._connect_db()
 
-        # HTML Pages: report available pages
-        pages_dir = os.path.join(self.pluginFolderPath, "Contents", "Resources", "static", "pages")
-        if os.path.isdir(pages_dir):
-            page_count = len([f for f in os.listdir(pages_dir) if f.lower().endswith(".html")])
-            self.logger.info(f"HTML Pages: {page_count} page(s) available")
+        # HTML Pages: report available pages from both locations
+        plugin_pages_dir = os.path.join(self.pluginFolderPath, "Contents", "Resources", "static", "pages")
+        plugin_count = self._count_html_files(plugin_pages_dir)
+        user_count = 0
+        try:
+            user_pages_dir = os.path.join(indigo.server.getInstallFolderPath(), "Web Assets", "static", "pages")
+            user_count = self._count_html_files(user_pages_dir)
+        except Exception:
+            pass
+        self.logger.info(f"HTML Pages: {plugin_count} bundled, {user_count} user-installed")
 
         self.logger.info("Domio plugin started")
 
@@ -464,20 +469,50 @@ class Plugin(indigo.PluginBase):
     # ═══════════════════════════════════════════════════
 
     def handle_pages(self, action, dev=None, caller_waiting_for_result=None):
-        """GET /message/com.simons-plugins.domio/pages/ — return HTML page manifest."""
+        """GET /message/com.simons-plugins.domio/pages/ — return HTML page manifest.
+
+        Scans two locations:
+        - Plugin bundle: Contents/Resources/static/pages/ (source: "plugin")
+          These are demo/sample pages shipped with the plugin. They are replaced
+          on every plugin update.
+        - Indigo Web Assets: Web Assets/static/pages/ (source: "user")
+          These are user-created pages that survive plugin updates. Served by
+          IWS at /static/pages/{filename}.
+        """
         reply = indigo.Dict()
         reply["headers"] = indigo.Dict({"Content-Type": "application/json"})
 
-        pages_dir = os.path.join(self.pluginFolderPath, "Contents", "Resources", "static", "pages")
         pages = []
 
+        # Plugin-bundled demo pages
+        plugin_dir = os.path.join(self.pluginFolderPath, "Contents", "Resources", "static", "pages")
+        pages.extend(self._scan_pages_dir(plugin_dir, "plugin"))
+
+        # User-owned pages in the Web Assets folder
+        try:
+            install_path = indigo.server.getInstallFolderPath()
+            web_assets_dir = os.path.join(install_path, "Web Assets", "static", "pages")
+            pages.extend(self._scan_pages_dir(web_assets_dir, "user"))
+        except Exception as exc:
+            self.logger.warning(f"Could not access Web Assets pages directory: {exc}")
+
+        self.logger.debug(f"Pages manifest: {len(pages)} page(s)")
+        reply["status"] = 200
+        reply["content"] = json.dumps({"pages": pages})
+        return reply
+
+    def _scan_pages_dir(self, pages_dir, source):
+        """Scan a directory for HTML pages and return manifest entries.
+
+        Returns an empty list if the directory doesn't exist. Each entry is
+        tagged with the given source to let the app choose the correct URL
+        path (plugin-scoped vs. server-root static).
+        """
         if not os.path.isdir(pages_dir):
-            self.logger.debug("Pages directory does not exist — returning empty manifest")
-            reply["status"] = 200
-            reply["content"] = json.dumps({"pages": []})
-            return reply
+            return []
 
         real_pages_dir = os.path.realpath(pages_dir)
+        entries = []
 
         for filename in sorted(os.listdir(pages_dir)):
             if not filename.lower().endswith(".html"):
@@ -492,20 +527,24 @@ class Plugin(indigo.PluginBase):
             try:
                 meta = self._parse_page_meta(filepath)
                 page_id = os.path.splitext(filename)[0]
-                pages.append({
+                entries.append({
                     "id": page_id,
                     "name": meta.get("name", page_id.replace("-", " ").title()),
                     "icon": meta.get("icon", "doc.richtext"),
                     "description": meta.get("description", ""),
                     "path": filename,
+                    "source": source,
                 })
             except (OSError, UnicodeDecodeError) as exc:
                 self.logger.warning(f"Skipping page file {filename}: {exc}")
 
-        self.logger.debug(f"Pages manifest: {len(pages)} page(s)")
-        reply["status"] = 200
-        reply["content"] = json.dumps({"pages": pages})
-        return reply
+        return entries
+
+    def _count_html_files(self, directory):
+        """Count .html files in a directory, returning 0 if missing."""
+        if not os.path.isdir(directory):
+            return 0
+        return len([f for f in os.listdir(directory) if f.lower().endswith(".html")])
 
     def _parse_page_meta(self, filepath):
         """Parse indigo-page-* meta tags from the first 4KB of an HTML file."""
