@@ -27,6 +27,27 @@ RANGE_DELTAS = {
 }
 
 
+def _local_walltime_epoch_to_utc(epoch_as_if_utc):
+    """Convert an "epoch computed as if the wallclock were UTC" into a true UTC epoch.
+
+    Indigo's SQL Logger stores naive **local** timestamps, but both backends compute
+    the epoch as if those wallclock values were UTC (SQLite ``strftime('%s', ts)`` and
+    Postgres ``EXTRACT(EPOCH FROM ts)`` on a ``timestamp without time zone``). That makes
+    the value an hour too high under BST (and correct under GMT), so the chart reads an
+    hour ahead in summer.
+
+    Recover the wallclock from the as-if-UTC epoch, then re-interpret it in the server's
+    local timezone via ``datetime.timestamp()`` (which treats a naive datetime as local,
+    DST-aware for that specific date).
+
+    DST-transition note: a wallclock that falls inside a spring-forward gap or fall-back
+    overlap (the ~1-2 logged samples per year at the changeover) resolves via the default
+    ``fold=0``, so it can be placed up to an hour off. Cosmetic on a chart; not worth handling.
+    """
+    wall = datetime.fromtimestamp(epoch_as_if_utc, tz=timezone.utc).replace(tzinfo=None)
+    return int(wall.timestamp())
+
+
 class HistoryDB:
     """Read-only access to Indigo SQL Logger database."""
 
@@ -185,14 +206,16 @@ class HistoryDB:
         Query device history for a specific column over a time range.
         Returns dict with points, min, max, current values.
 
-        Timestamps in the SQL Logger database are stored in GMT.
+        SQL Logger stores naive LOCAL timestamps, so the range filter is built in
+        local time and the per-point epochs are corrected to true UTC via
+        _local_walltime_epoch_to_utc (see that helper for the why).
         """
         table_name = f"device_history_{device_id}"
         bucket_seconds = RANGE_BUCKETS.get(time_range)
         delta = RANGE_DELTAS.get(time_range, timedelta(hours=24))
 
-        # Calculate start time in GMT (SQL Logger stores GMT timestamps)
-        start_time = datetime.now(timezone.utc) - delta
+        # SQL Logger stores naive local timestamps, so filter in local walltime.
+        start_time = datetime.now() - delta
         start_ts = start_time.strftime("%Y-%m-%d %H:%M:%S")
 
         # Determine column type first
@@ -258,7 +281,7 @@ class HistoryDB:
             value_raw = row[1]
             if epoch_raw is None or epoch_raw == "":
                 continue
-            epoch = int(epoch_raw)
+            epoch = _local_walltime_epoch_to_utc(int(epoch_raw))
             # Handle booleans (PG returns 't'/'f' strings via psql)
             if isinstance(value_raw, bool):
                 value = 1.0 if value_raw else 0.0
@@ -309,7 +332,7 @@ class HistoryDB:
                 continue
             if value_raw is None or value_raw == "":
                 continue
-            epoch = int(epoch_raw)
+            epoch = _local_walltime_epoch_to_utc(int(epoch_raw))
             value = round(float(value_raw), 2)
             points.append({"t": epoch, "v": value})
         return points
