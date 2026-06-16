@@ -39,6 +39,10 @@ def _local_walltime_epoch_to_utc(epoch_as_if_utc):
     Recover the wallclock from the as-if-UTC epoch, then re-interpret it in the server's
     local timezone via ``datetime.timestamp()`` (which treats a naive datetime as local,
     DST-aware for that specific date).
+
+    DST-transition note: a wallclock that falls inside a spring-forward gap or fall-back
+    overlap (the ~1-2 logged samples per year at the changeover) resolves via the default
+    ``fold=0``, so it can be placed up to an hour off. Cosmetic on a chart; not worth handling.
     """
     wall = datetime.fromtimestamp(epoch_as_if_utc, tz=timezone.utc).replace(tzinfo=None)
     return int(wall.timestamp())
