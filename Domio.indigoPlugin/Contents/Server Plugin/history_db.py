@@ -4,9 +4,19 @@ Supports SQLite and PostgreSQL backends (read-only access).
 """
 import glob
 import os
+import re
 import sqlite3
 import subprocess
 from datetime import datetime, timedelta, timezone
+
+
+# SQL Logger spawns a fresh column suffixed with an epoch whenever a logged
+# state's data type changes (it can't ALTER the existing column), e.g.
+# "temperature_1775461714" alongside the live "temperature". It also renames a
+# device's own "id" state to "indigo_id" (to avoid clashing with the table PK)
+# and then suffixes THAT on every str/int flip. All of these are dead columns
+# that clutter the chart picker — match the epoch-suffix to drop them.
+_SQL_LOGGER_ARTIFACT_RE = re.compile(r"_\d{6,}$")
 
 
 # Time bucket sizes for downsampling (in seconds)
@@ -184,6 +194,16 @@ class HistoryDB:
             columns = []
             for name, col_type in rows:
                 if name in ("id", "ts"):
+                    continue
+                # Skip SQL Logger artifacts that flood the chart picker:
+                #  - "indigo_id": the device's own `id` state, renamed to dodge the
+                #    table PK clash (a reading-ID string — useless for charting).
+                #  - "<state>_<epoch>" / "indigo_id_<epoch>": dead type-change
+                #    duplicates (see _SQL_LOGGER_ARTIFACT_RE).
+                if name == "indigo_id" or _SQL_LOGGER_ARTIFACT_RE.search(name):
+                    continue
+                # Defensive: bare internal numeric state keys (e.g. "1779419337710")
+                if name.lstrip("-").isdigit():
                     continue
                 # Normalise type names
                 col_type_lower = col_type.lower()
