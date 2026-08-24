@@ -631,7 +631,13 @@ class Plugin(indigo.PluginBase):
             return reply
 
         if not column:
-            columns_info = self.db.get_columns(device_id)
+            try:
+                columns_info = self.db.get_columns(device_id)
+            except Exception as e:
+                self.logger.error(f"Column lookup failed: {e}")
+                reply["status"] = 500
+                reply["content"] = json.dumps({"success": False, "error": f"History lookup failed: {e}"})
+                return reply
             if not columns_info:
                 reply["status"] = 404
                 reply["content"] = json.dumps({"success": False, "error": f"No history table found for device {device_id}"})
@@ -685,7 +691,7 @@ class Plugin(indigo.PluginBase):
         except Exception as e:
             self.logger.error(f"Column query failed: {e}")
             reply["status"] = 500
-            reply["content"] = json.dumps({"success": False, "error": str(e)})
+            reply["content"] = json.dumps({"success": False, "error": f"History lookup failed: {e}"})
         return reply
 
     # ═══════════════════════════════════════════════════
