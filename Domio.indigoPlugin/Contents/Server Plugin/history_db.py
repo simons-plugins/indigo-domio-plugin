@@ -218,8 +218,12 @@ class HistoryDB:
                 columns.append({"name": name, "type": mapped})
             return columns
         except Exception as e:
+            # A genuinely absent history table yields zero rows (not an exception) from
+            # both pragma_table_info and information_schema.columns, so anything caught
+            # here is a real lookup failure (DB down, psql error, permissions) and must
+            # propagate — swallowing it would make it indistinguishable from "no table".
             self.logger.error(f"Error getting columns for device {device_id}: {e}")
-            return []
+            raise
 
     def query_history(self, device_id, column, time_range="24h", max_points=300):
         """
