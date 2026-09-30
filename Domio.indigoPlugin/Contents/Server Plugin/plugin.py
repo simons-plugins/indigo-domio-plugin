@@ -13,6 +13,7 @@ import indigo
 import json
 import os
 import re
+import urllib.parse
 import urllib.request
 import urllib.error
 from datetime import datetime
@@ -32,6 +33,7 @@ class Plugin(indigo.PluginBase):
         self._subscription_expired = False
         self._expired_logged_at = None
         self.db = None
+        self._warned_dup_page_ids = set()
 
     # ═══════════════════════════════════════════════════
     # Lifecycle
@@ -210,6 +212,15 @@ class Plugin(indigo.PluginBase):
         page_list.sort(key=lambda x: x[1].lower())
         return page_list
 
+    def htmlPageListGenerator(self, filter="", valuesDict=None, typeId="", targetId=0):
+        """Return list of HTML dashboard pages for the deep link dropdown."""
+        page_list = []
+        for page in self._collect_pages():
+            origin = "sample" if page["source"] == "plugin" else "user"
+            page_list.append((page["id"], f'{page["name"]} ({origin})'))
+        page_list.sort(key=lambda x: x[1].lower())
+        return page_list
+
     def actionGroupListGenerator(self, filter="", valuesDict=None, typeId="", targetId=0):
         """Return list of action groups for the deep link dropdown."""
         group_list = []
@@ -242,6 +253,16 @@ class Plugin(indigo.PluginBase):
         elif link_type == "page":
             link_id = action_props.get("deepLinkPageId", "") or action_props.get("deepLinkId", "")
             return f"domio://page/{link_id}" if link_id else None
+        elif link_type == "htmlPage":
+            link_id = action_props.get("deepLinkHtmlPageId", "")
+            if not link_id:
+                return None
+            if link_id not in {p["id"] for p in self._collect_pages()}:
+                self.logger.warning(
+                    f"HTML page '{link_id}' no longer exists; "
+                    f"the link will open the Pages tab only"
+                )
+            return f"domio://html-page/{urllib.parse.quote(link_id, safe='')}"
         elif link_type == "action":
             link_id = action_props.get("deepLinkActionId", "") or action_props.get("deepLinkId", "")
             return f"domio://action/{link_id}" if link_id else None
@@ -482,6 +503,19 @@ class Plugin(indigo.PluginBase):
         reply = indigo.Dict()
         reply["headers"] = indigo.Dict({"Content-Type": "application/json"})
 
+        pages = self._collect_pages()
+
+        self.logger.debug(f"Pages manifest: {len(pages)} page(s)")
+        reply["status"] = 200
+        reply["content"] = json.dumps({"pages": pages})
+        return reply
+
+    def _collect_pages(self) -> list:
+        """Scan the plugin bundle and Web Assets page directories.
+
+        Returns manifest entries (plugin pages first, then user pages) and
+        warns about any page id found more than once.
+        """
         pages = []
 
         # Plugin-bundled demo pages
@@ -496,10 +530,18 @@ class Plugin(indigo.PluginBase):
         except Exception as exc:
             self.logger.warning(f"Could not access Web Assets pages directory: {exc}")
 
-        self.logger.debug(f"Pages manifest: {len(pages)} page(s)")
-        reply["status"] = 200
-        reply["content"] = json.dumps({"pages": pages})
-        return reply
+        seen = set()
+        for page in pages:
+            page_id = page["id"]
+            if page_id in seen and page_id not in self._warned_dup_page_ids:
+                self._warned_dup_page_ids.add(page_id)
+                self.logger.warning(
+                    f"Duplicate HTML page id '{page_id}'; "
+                    f"the app will open the first (plugin) copy"
+                )
+            seen.add(page_id)
+
+        return pages
 
     def _scan_pages_dir(self, pages_dir, source):
         """Scan a directory for HTML pages and return manifest entries.
