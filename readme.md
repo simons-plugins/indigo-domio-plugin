@@ -18,7 +18,7 @@ Indigo Trigger → Plugin → /v2/push → Relay → APNs → iPhone
 - **Multi-device fan-out** — pushes to all registered devices
 - **Variable substitution** — use `%%v:variableName%%` in notification text
 - **Device state substitution** — use `%%d:deviceId:stateName%%` in notification text
-- **Deep links** — tap notification to open device, page, action group, or log in Domio
+- **Deep links** — tap notification to open device, page, HTML page, action group, or log in Domio
 - **Stale token cleanup** — removes expired device tokens (410) automatically
 
 ## Deep Link Types
@@ -27,6 +27,7 @@ Indigo Trigger → Plugin → /v2/push → Relay → APNs → iPhone
 |------|-----|--------|
 | Device | `domio://device/{id}` | Opens device detail sheet |
 | Page | `domio://page/{id}` | Navigates to control page |
+| HTML Page | `domio://html-page/{id}` | Opens HTML dashboard page |
 | Action | `domio://action/{id}` | Executes action group |
 | Log | `domio://log` | Switches to log tab |
 

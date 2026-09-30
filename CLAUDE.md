@@ -93,7 +93,7 @@ domio push.IndigoPlugin/
 ### Send Push Notification (`sendPushNotification`)
 - **Title**: Supports `%%v:varName%%` and `%%d:deviceId:stateName%%` substitution
 - **Body**: Same substitution support (required field)
-- **Deep link**: device, page, action group, log, or none
+- **Deep link**: device, page, HTML page, action group, log, or none
 - **Sound**: Optional notification sound
 - POSTs to `https://push.domio-smart-home.app/v2/push`
 

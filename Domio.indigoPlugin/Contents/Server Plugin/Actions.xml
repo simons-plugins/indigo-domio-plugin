@@ -33,6 +33,7 @@
                     <Option value="none">None</Option>
                     <Option value="device">Device</Option>
                     <Option value="page">Control Page</Option>
+                    <Option value="htmlPage">HTML Page</Option>
                     <Option value="action">Action Group</Option>
                     <Option value="log">Event Log</Option>
                 </List>
@@ -46,6 +47,11 @@
                    visibleBindingId="deepLinkType" visibleBindingValue="page">
                 <Label>Control Page:</Label>
                 <List class="self" method="controlPageListGenerator" dynamicReload="true" />
+            </Field>
+            <Field type="menu" id="deepLinkHtmlPageId" defaultValue=""
+                   visibleBindingId="deepLinkType" visibleBindingValue="htmlPage">
+                <Label>HTML Page:</Label>
+                <List class="self" method="htmlPageListGenerator" dynamicReload="true" />
             </Field>
             <Field type="menu" id="deepLinkActionId" defaultValue=""
                    visibleBindingId="deepLinkType" visibleBindingValue="action">
