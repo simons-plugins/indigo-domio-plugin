@@ -1,6 +1,8 @@
 # Domio Push Notifications — Indigo Plugin
 
-Bridges Indigo home automation triggers to APNs push notifications via the [Domio Push Relay](https://github.com/simons-plugins/domio-push-relay). Delivers notifications to the [Domio iOS app](https://github.com/simons-plugins/domio-code).
+Bridges Indigo home automation triggers to push notifications on the [dom.io iOS app](https://apps.apple.com/app/domio-smart-home/id6758682250) (formerly Domio).
+
+Notifications are delivered through the Domio Push Relay, a hosted service run by the dom.io developer. **You don't install or configure the relay.** Install this plugin and the dom.io app, then enable push notifications in the app (this needs an active subscription). The app registers itself with the relay automatically.
 
 ## How It Works
 
